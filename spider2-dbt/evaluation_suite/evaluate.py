@@ -96,8 +96,9 @@ def run_evaluation(result_dir, gold_dir):
                 elif eval_metadata['func'] == 'duckdb_match':
                     eval_metadata['parameters']['gold'] = os.path.join(gold_dir, data['instance_id'], eval_metadata['parameters']['gold'])
                     try:
-                        score = duckdb_match(os.path.join(result_dir,data['instance_id'], data['answer_or_path']), **eval_metadata['parameters'])    
-                    except:
+                        score = duckdb_match(os.path.join(result_dir,data['instance_id'], data['answer_or_path']), **eval_metadata['parameters'])
+                    except Exception as e:
+                        print(e)
                         score = 0
 
             
@@ -107,8 +108,8 @@ def run_evaluation(result_dir, gold_dir):
             score = tables_match(results_data, **eval_metadata['parameters'])
 
 
-        if score == 1:
-            print(data)   
+        # if score == 1:
+        #     print(data)   
             # import pdb; pdb.set_trace()   
                         
         output_dict['score'] = score

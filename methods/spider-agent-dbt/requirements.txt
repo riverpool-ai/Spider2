@@ -25,7 +25,8 @@ rpyc
 mysql-connector-python
 google-cloud-bigquery
 duckdb
-psycopg2
-psycopg2-binary
+# psycopg2
+# psycopg2-binary
 google.generativeai
 plotly
+litellm

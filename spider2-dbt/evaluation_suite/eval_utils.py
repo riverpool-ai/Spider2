@@ -220,7 +220,8 @@ def duckdb_match(result: str, gold: str, condition_tabs=None, condition_cols: Li
     gold_tables = [get_duckdb_pandas_table(gold, table_name) for table_name in condition_tabs]
     try:
         pred_tables = [get_duckdb_pandas_table(result, table_name) for table_name in condition_tabs]
-    except:
+    except Exception as e:
+        print(e)
         return 0
     
     assert len(gold_tables) == len(pred_tables)
