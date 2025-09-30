@@ -30,3 +30,4 @@ duckdb
 google.generativeai
 plotly
 litellm
+gdown

@@ -120,7 +120,9 @@ def run_evaluation(result_dir, gold_dir):
     for item in output_list:
         if item['score'] == 1:
             score += 1
-            print(item['instance_id'])
+            print(f"pass: {item['instance_id']}")
+        else:
+            print(f"failed: {item['instance_id']}")
     print(score / len(output_list), score, len(output_list))
     
 
