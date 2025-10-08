@@ -195,6 +195,12 @@ class PromptAgent:
         """ Parse action from text """
         if output is None or len(output) == 0:
             pass
+
+        matches = re.findall(r'["\']?Action["\']?: \S', output, flags=re.DOTALL)
+        if matches and len(matches) > 1:
+            logger.info(f"Found {len(matches)} actions, but we only support one action")
+            return None
+
         action_string = ""
         patterns = [r'["\']?Action["\']?:? (.*?)Observation',r'["\']?Action["\']?:? (.*?)Thought', r'["\']?Action["\']?:? (.*?)$', r'^(.*?)Observation']
 
@@ -244,10 +250,10 @@ class PromptAgent:
                 if retry_count > 3:
                     logger.info("Failed to parse action from response, stop.")
                     break
-                obs = "Failed to parse action from your response, make sure you provide a valid action."
+                obs = "Failed to parse action from your response, make sure you provide a valid action in the correct format, and provide exactly one action."
             else:
                 logger.info("Step %d: %s", step_idx + 1, action)
-                obs, done = self.env.step(action)
+                #obs, done = self.env.step(action) # TODO: This is the original code though it looks like it's a duplicate call
 
                 if last_action is not None and last_action == action:
                     if repeat_action:

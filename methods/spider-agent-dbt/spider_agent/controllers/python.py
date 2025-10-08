@@ -90,7 +90,8 @@ class PythonController:
             if "&&" in changed:
                 changed = changed[:changed.index("&&")].strip()
             self.work_dir = self.update_working_directory(self.work_dir, changed)
-            return f"The command to change directory to {self.work_dir} is executed successfully."
+            #return f"The command to change directory to {self.work_dir} is executed successfully."
+            return f"The command to change directory to {self.work_dir} is executed successfully. {output.decode("utf-8", errors="ignore").strip()}"
         
         return output.decode("utf-8", errors="ignore").strip()
 
