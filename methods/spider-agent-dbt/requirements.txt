@@ -20,7 +20,7 @@ llama-cpp-python
 tenacity
 accelerate
 optimum
-auto-gptq
+#auto-gptq
 rpyc
 mysql-connector-python
 google-cloud-bigquery
@@ -31,3 +31,4 @@ google.generativeai
 plotly
 litellm
 gdown
+tabulate
