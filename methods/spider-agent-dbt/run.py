@@ -104,8 +104,8 @@ def test(
     agent = PromptAgent(
         model=args.model,
         max_tokens=args.max_tokens,
-        top_p=args.top_p,
-        temperature=args.temperature,
+        top_p=args.top_p if args.top_p > 0 else None,
+        temperature=args.temperature if args.temperature > 0 else None,
         max_memory_length=args.max_memory_length,
         max_steps=args.max_steps,
         use_plan=args.plan
@@ -116,7 +116,7 @@ def test(
     with open(args.test_path, "r") as f:
         task_configs = [json.loads(line) for line in f]
     if args.example_name != "":
-        task_configs = [task for task in task_configs if args.example_name in task["id"]]
+        task_configs = [task for task in task_configs if args.example_name in task["instance_id"]]
     else:
         if args.example_index != "all":
             if "-" in args.example_index:
