@@ -54,6 +54,8 @@ def run_evaluation(result_dir, gold_dir):
         else:
             eval_metadatas = eval_metadata
         
+        print(f"EVALUATE: Analyzing test case '{data['instance_id']}', answer-type:'{data['answer_type']}', func:{eval_metadatas[0].get('func', 'None')}...")
+
         score = 0
         if data['answer_type'] == 'answer':
             
@@ -111,7 +113,9 @@ def run_evaluation(result_dir, gold_dir):
         # if score == 1:
         #     print(data)   
             # import pdb; pdb.set_trace()   
-                        
+
+        print(f"EVALUATE: Score: {score}")
+        
         output_dict['score'] = score
         output_list.append(output_dict)
         
