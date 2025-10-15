@@ -156,3 +156,24 @@ def copy_all_subfiles_clickhouse_setup(controller, dirs: List[str]):
     controller._execute_setup(command=f"rm -rf  __MACOSX")
 
     return
+
+def copy_file_setup(controller, src_file: str, dst_path: str):
+    """ Copy a file to the container to a given path. Create the directory if it doesn't exist. """
+    mnt_dir = controller.mnt_dir
+
+    dest_full_path = os.path.join(mnt_dir, dst_path)
+    os.makedirs(os.path.dirname(dest_full_path), exist_ok=True)
+    shutil.copy2(src_file, dest_full_path)
+
+    return
+
+def create_file_setup(controller, src_data: str, dst_path: str):
+    """ Create a file with data 'src_data' in the container to a given path. Create the directory if it doesn't exist. """
+    mnt_dir = controller.mnt_dir
+
+    dest_full_path = os.path.join(mnt_dir, dst_path)
+    os.makedirs(os.path.dirname(dest_full_path), exist_ok=True)
+    with open(dest_full_path, "w") as f:
+        f.write(src_data)
+
+    return

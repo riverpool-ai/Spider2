@@ -6,8 +6,9 @@ import os
 import random
 import sys
 import glob
-
+import pprint
 from tqdm import tqdm
+import time
 
 from spider_agent.envs.spider_agent import Spider_Agent_Env
 from spider_agent.agent.agents import PromptAgent
@@ -51,7 +52,10 @@ def config() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run end-to-end evaluation on the benchmark"
     )
-    
+
+    # Using Claude Agent SDK mode
+    parser.add_argument("--claude_agent_sdk_mode", action="store_true")
+
     parser.add_argument("--max_steps", type=int, default=30)
     
     parser.add_argument("--max_memory_length", type=int, default=25)
@@ -193,8 +197,34 @@ def test(
 
         env_config["init_args"]["name"] = experiment_id +"-"+ task_config["instance_id"]
 
-          
+        # In Claude Agent SDK mode, we run the agent inside the container, unlike the regular flow.
+        # So the orchestration is around passing the info there, runnning the container with the agent script, and collecting the results.
+        if args.claude_agent_sdk_mode:
 
+            # Update env config for the agent running inside the container
+            env_config["image_name"] = "spider_agent_with_claude_agent-image"
+            env_config["init_args"]["environment"] = {
+                "ANTHROPIC_API_KEY": os.environ["ANTHROPIC_API_KEY"], # "******************"
+            }
+
+            # Agent / Test related files to add to container
+            workspace_dir = env_config['init_args']['work_dir']
+            agent_base_dir = "agent" # Relative to workspace_dir
+            agent_exec_file = os.path.join(agent_base_dir, "run_test_in_container.py")
+            agent_instruction_file = os.path.join(agent_base_dir, "task_instructions.txt")
+            agent_results_file = os.path.join(agent_base_dir, "result.json")
+
+            # Copy/Create the files
+            task_config['config'].append({"type": "create_file",
+                                          "parameters": {
+                                            "src_data": task_config["instruction"],
+                                            "dst_path": agent_instruction_file}})
+            task_config['config'].append({"type": "copy_file",
+                                            "parameters": {
+                                            "src_file": "spider_agent/images/spider_agent_with_claude_agent-image/run_test_in_container.py",
+                                            "dst_path": agent_exec_file}})
+
+            #print(f"TEMP: TASK CONFIG: {pprint.pformat(task_config)}\n;;\nOUTPUT DIR: {output_dir}")
 
         env = Spider_Agent_Env(
             env_config=env_config,
@@ -203,11 +233,47 @@ def test(
             mnt_dir=output_dir
         )
     
-        agent.set_env_and_task(env)
-    
-        logger.info('Task input:' + task_config['instruction'])
-        done, result_output = agent.run()
-        trajectory = agent.get_trajectory()
+        if not args.claude_agent_sdk_mode:
+
+            # Regular script mode
+            agent.set_env_and_task(env)
+        
+            logger.info('Task input:' + task_config['instruction'])
+            done, result_output = agent.run()
+            trajectory = agent.get_trajectory()
+        
+        else:
+            # Claude Agent SDK mode
+            #print("TODO: TEMP - env created")
+
+            # Run the agent in the container
+            print(f"Run agent in the container...")
+            cmd = ["python3", os.path.join(workspace_dir, agent_exec_file),
+                   "--instruction_file", os.path.join(workspace_dir, agent_instruction_file),
+                   "--model", args.model,
+                   "--max_turns", str(args.max_steps)]
+            _, stream = env.container.exec_run(cmd, workdir=os.path.join(workspace_dir, agent_base_dir), stream=True)
+            for data in stream:
+                try:
+                    print(data.decode())
+                except Exception as e:
+                    print(f"Error decoding data: {e}")
+
+            # Open the result.json file
+            with open(os.path.join(output_dir, agent_results_file), "r") as f:
+                results = json.load(f)
+            
+            # Update data for the rest of the code
+            done = results.get("summary", {}).get("subtype", "failed") == "success"
+            result_output = results.get("summary", {}).get("result", "")
+            trajectory = results
+            
+            print(f"Test Done, saving results...")
+            #env.close()
+
+            #sys.exit(1)
+
+
 
         os.makedirs(os.path.join(output_dir, "spider"), exist_ok=True)
         result_files = env.post_process()

@@ -120,8 +120,10 @@ class Spider_Agent_Env(gym.Env):
             container.remove()
             print(f"Container {container_name} stopped and removed.")
         except docker.errors.NotFound:
+            print(f"Container {container_name} not found (ok, wanted to remove).")
             pass
         except docker.errors.APIError as e:
+            print(f"Container {container_name} : API error: {e}.")
             pass
         
         create_folder_if_not_exists(self.mnt_dir)
@@ -135,9 +137,12 @@ class Spider_Agent_Env(gym.Env):
         extra_params = {'detach': True, 'tty': True, 'stdout': True, 'stderr': True, 'stdin_open': True, **kwargs}
 
         try:
+            print(f"Get image {self.image_name}")
             client: DockerClient = docker.from_env()
             image = client.images.get(self.image_name)
+            print(f"Image {image}")
             self.container: Container = client.containers.run(image=image, volumes=volumes, **extra_params)
+            print(f"Container {self.container}")
         except ImageNotFound as e:
             dockerfile_path = os.path.join(DEFAULT_IMAGE_DIR, self.image_name)
             if os.path.exists(dockerfile_path):
