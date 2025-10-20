@@ -10,11 +10,6 @@ import argparse
 from dataclasses import asdict
 from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions, SystemMessage, AssistantMessage, TextBlock, ResultMessage, HookMatcher, ToolResultBlock, tool, create_sdk_mcp_server
 
-# TODO:
-# 6. Add to the agent the ability to run sql queries on the DB (python code with duckdb driver)
-# 7. Make the main runner (run.py) with a new flag mode run this new method and orcestrate the results (define and implement a way to detect when agent finishes or unexpectedly exist).
-# 8. Align output schema to the expectation of the evaluation suite / whatever comes next.
-
 
 SYSTEM_PROMPT = """
 You are a data scientist proficient in database, SQL and DBT Project.

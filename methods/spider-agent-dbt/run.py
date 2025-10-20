@@ -55,6 +55,8 @@ def config() -> argparse.Namespace:
 
     # Using Claude Agent SDK mode
     parser.add_argument("--claude_agent_sdk_mode", action="store_true")
+    parser.add_argument("--keep_container_up", action="store_true")
+    parser.add_argument("--just_prepare_container", action="store_true")
 
     parser.add_argument("--max_steps", type=int, default=30)
     
@@ -188,8 +190,13 @@ def test(
             "init_args": {
                 "name": experiment_id,
                 "work_dir": "/workspace",
+                #"ports": {8088: 8080} # For dbt docs serve
             }
         }
+
+        if args.just_prepare_container:
+            env_config["init_args"]["ports"] = {8080: 8080} # For dbt docs serve
+
 
         env_config["image_name"] = "spider_agent-image"
         task_config['config'] = [{"type": "copy_all_subfiles", "parameters": {"dirs": [os.path.join(source_data_dir, task_config["instance_id"])]}}]
@@ -233,6 +240,10 @@ def test(
             mnt_dir=output_dir
         )
     
+        if args.just_prepare_container:
+            logger.info(f'Container {env.container.name} ready and is under your responsibility. Exiting...')
+            sys.exit(0)
+
         if not args.claude_agent_sdk_mode:
 
             # Regular script mode
@@ -244,7 +255,6 @@ def test(
         
         else:
             # Claude Agent SDK mode
-            #print("TODO: TEMP - env created")
 
             # Run the agent in the container
             print(f"Run agent in the container...")
@@ -269,9 +279,6 @@ def test(
             trajectory = results
             
             print(f"Test Done, saving results...")
-            #env.close()
-
-            #sys.exit(1)
 
 
 
@@ -284,7 +291,11 @@ def test(
         
 
         logger.info("Finished %s", instance_id)
-        env.close()
+        
+        if args.keep_container_up:
+            logger.info(f"Keeping container '{env.container.name}' up for debugging...")
+        else:
+            env.close()
 
 
 

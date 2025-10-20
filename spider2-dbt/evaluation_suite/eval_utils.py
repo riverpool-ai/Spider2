@@ -106,27 +106,69 @@ def number_match(pred, gold, percentage=False, precision=4, conj="or"):
 
     
 
+# This function is used to compare two pandas tables. It goes over all values - column by column, sorts it, and compare to the columns in the other table (testing each until there is a match)
 def compare_pandas_table(pred, gold, condition_cols=[], ignore_order=False):
     
+    import pprint
+
+    table_name = gold.table_name
+
+    print(f"DEBUG: COMPARING: ({table_name}), columns={condition_cols}, ignore_order={ignore_order}")
+    try:
+        # Print reference tables, sorted by all columns so it will be easier to debug.
+        #print(f"DEBUG: GOLD:\n{gold.sort_values(by='value', ascending=False)[:10]}")
+        #print(f"DEBUG: PRED:\n{pred.sort_values(by='value', ascending=False)[:10]}")
+        print(f"DEBUG: GOLD:\n{gold.sort_values(by=gold.columns.tolist())[:10]}")
+        print(f"DEBUG: PRED:\n{pred.sort_values(by=pred.columns.tolist())[:10]}")
+    except:
+        pass
+
     tolerance = 1e-2
 
     def vectors_match(v1, v2, tol=tolerance, ignore_order_=False):
+        gold_column_name = v1[0]
+        pred_column_name = v2[0]
+        v1 = v1[1:]
+        v2 = v2[1:]
         try:
             if ignore_order_:
+                # TODO: This is broken if the column holds both strings and numbers...
+                # v1, v2 = (sorted(v1, key=lambda x: (x is None, float(x) if isinstance(x, (int, float)) else str(x), isinstance(x, (int, float)))),
+                #         sorted(v2, key=lambda x: (x is None, float(x) if isinstance(x, (int, float)) else str(x), isinstance(x, (int, float)))))
                 v1, v2 = (sorted(v1, key=lambda x: (x is None, str(x), isinstance(x, (int, float)))),
                         sorted(v2, key=lambda x: (x is None, str(x), isinstance(x, (int, float)))))
             if len(v1) != len(v2):
+                print(f"DEBUG: ({table_name}) v1 and v2 have different lengths: {len(v1)} != {len(v2)}")
                 return False
+            print(f"DEBUG: ({table_name}): comparing lists: gold:(name={gold_column_name}, n={len(v1)}, type={type(v1)}), pred:(name={pred_column_name}, n={len(v2)}, type={type(v2)})")
+            print(f"DEBUG: ({table_name}): Values sample:\n{pprint.pformat(list(zip(v1, v2))[:10])}")
+            match_check_count = 0
+            mismatch_count = 0
             for a, b in zip(v1, v2):
+                if mismatch_count > 0 and mismatch_count == match_check_count:
+                    print(f"DEBUG: ({table_name}) v1 and v2 have mismatch on start, skipping check. {mismatch_count} out of {match_check_count}")
+                    return False
+                match_check_count += 1
+                #print(f"DEBUG: ({table_name}): Value Compare: {a} =? {b}, types={(type(a), type(b))}")
                 if pd.isna(a) and pd.isna(b):
                     continue
                 elif isinstance(a, (int, float)) and isinstance(b, (int, float)):
-                    if not math.isclose(float(a), float(b), abs_tol=tol):
-                        return False
+                    if not math.isclose(float(a), float(b), abs_tol=tol, rel_tol=tol):
+                        if match_check_count < 15: print(f"DEBUG: ({table_name}) v1 and v2 have different values (is close): {a} != {b}, match_check_count: {match_check_count}")
+                        mismatch_count += 1
+                        continue
+                        # return False
                 elif a != b:
-                    return False
+                    if match_check_count < 15: print(f"DEBUG: ({table_name}) v1 and v2 have different values (!=): {a} != {b}, match_check_count: {match_check_count}")
+                    mismatch_count += 1
+                    continue
+                    #return False
+            if mismatch_count > 0:
+                print(f"DEBUG: ({table_name}) v1 and v2 have mismatch count of {mismatch_count} out of {match_check_count}")
+                return False
             return True
         except Exception as e:
+            print(f"DEBUG: ({table_name}) v1 and v2 have different values (exception): {e}")
             return False
     
     if condition_cols != []:
@@ -135,16 +177,36 @@ def compare_pandas_table(pred, gold, condition_cols=[], ignore_order=False):
         gold_cols = gold
     pred_cols = pred
     
-    t_gold_list = gold_cols.transpose().values.tolist()
-    t_pred_list = pred_cols.transpose().values.tolist()
+    # t_gold_list = gold_cols.transpose().values.tolist()
+    # t_pred_list = pred_cols.transpose().values.tolist()
+    t_gold_list = [[col] + gold_cols[col].tolist() for col in gold_cols.columns]
+    t_pred_list = [[col] + pred_cols[col].tolist() for col in pred_cols.columns]
+    #print(f"DEBUG: GOLD COLUMNS: {t_gold_list}")
     score = 1
-    for _, gold in enumerate(t_gold_list):
-        if not any(vectors_match(gold, pred, ignore_order_=ignore_order) for pred in t_pred_list):
-            score = 0
+
+    #import pprint
+    #print(f"DEBUG: COMPARING T_LISTS: ({table_name}) GOLD:\n{pprint.pformat(t_gold_list[:10])}")
+    #print(f"DEBUG: COMPARING T_LISTS: ({table_name}) PRED:\n{pprint.pformat(t_pred_list[:10])}")
+
+    for i, gold in enumerate(t_gold_list):
+
+        print(f"DEBUG: ({table_name}) FIND MATCH FOR COLUMN: GOLD[{i} / {gold[0]}]")
+
+        for j, pred in enumerate(t_pred_list):
+            if vectors_match(gold, pred, ignore_order_=ignore_order):
+                print(f"DEBUG: ({table_name}) MATCHED COLUMN: GOLD[{i} / {gold[0]}] == PRED[{j} / {pred[0]}]")
+                break
         else:
-            for j, pred in enumerate(t_pred_list):
-                if vectors_match(gold, pred, ignore_order_=ignore_order):
-                    break
+            print(f"DEBUG: ({table_name}) NO COLUMN MATCH: GOLD[{i} / {gold[0]}]")
+            score = 0
+
+        # print(f"DEBUG: WHAT IS T_LISTS GOLD[{_}]: ({table_name}) {pprint.pformat(gold[:10])}")
+        # if not any(vectors_match(gold, pred, ignore_order_=ignore_order) for pred in t_pred_list):
+        #     score = 0
+        # else:
+        #     for j, pred in enumerate(t_pred_list):
+        #         if vectors_match(gold, pred, ignore_order_=ignore_order):
+        #             break
 
     return score
     
@@ -211,6 +273,7 @@ def duckdb_match(result: str, gold: str, condition_tabs=None, condition_cols: Li
     def get_duckdb_pandas_table(db, table_name):
         con = duckdb.connect(database=db, read_only=True)
         df = con.execute(f'SELECT * FROM {table_name}').fetchdf()
+        df.table_name = table_name
         con.close()
         return df
     

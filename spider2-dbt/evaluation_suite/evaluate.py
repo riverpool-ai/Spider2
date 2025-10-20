@@ -19,7 +19,10 @@ def read_jsonl(file_path):
 
 
 
-def run_evaluation(result_dir, gold_dir):
+def run_evaluation(args):
+
+    result_dir, gold_dir = args.result_dir, args.gold_dir
+
     gold_jsonl_files = [f for f in os.listdir(gold_dir) if f.endswith('.jsonl')]
     assert len(gold_jsonl_files) == 1 and gold_jsonl_files[0] == "spider2_eval.jsonl"
     gold_jsonl_file = os.path.join(gold_dir,gold_jsonl_files[0])
@@ -37,6 +40,13 @@ def run_evaluation(result_dir, gold_dir):
 
     # Find common instance_ids and merge data
     common_instance_ids = set(gold_dict.keys()).intersection(result_dict.keys())
+
+    if args.instance_id:
+        if args.instance_id not in common_instance_ids:
+            print(f"Instance ID {args.instance_id} not found in the result directory. Exiting...")
+            return
+        common_instance_ids = [args.instance_id]
+
     evaluation_data = [{**gold_dict[id], **result_dict[id]} for id in common_instance_ids]
     
     print(len(evaluation_data))
@@ -137,11 +147,12 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Run evaluations for NLP models.")
     parser.add_argument("--result_dir", type=str, required=True, help="Result directory")
     parser.add_argument("--gold_dir", type=str, default="./gold", help="Directory containing gold standard files")
+    parser.add_argument("--instance_id", type=str, default="", help="Instance ID to evaluate. When empty evaluate all instances found in the result directory")
     return parser.parse_args()
 
 def main():
     args = parse_arguments()
-    run_evaluation(args.result_dir, args.gold_dir)
+    run_evaluation(args)
 
 if __name__ == "__main__":
     main()
